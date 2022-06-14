@@ -4,6 +4,7 @@
 #include "Utility/SimpleConfig.h"
 
 #include "Utility/StringUtils.h"
+#include "Utility/StringUtils.h"
 #include "Trajectory.h"
 #include "BaseController.h"
 #include "Math/Mat3x3F.h"
@@ -53,6 +54,10 @@ void QuadControl::Init()
 #endif
 }
 
+void prv(V3F vector){
+    printf("\nV3F: %f, %f, %f", vector.x, vector.y,vector.z);
+}
+
 VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momentCmd)
 {
   // Convert a desired 3-axis moment and collective thrust command to 
@@ -69,11 +74,17 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   // You'll need the arm length parameter L, and the drag/thrust ratio kappa
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
+    //printf("\n Motor commands %f", collThrustCmd);
+    //prv(momentCmd);
 
-  cmd.desiredThrustsN[0] = mass * 9.81f / 4.f; // front left
-  cmd.desiredThrustsN[1] = mass * 9.81f / 4.f; // front right
-  cmd.desiredThrustsN[2] = mass * 9.81f / 4.f; // rear left
-  cmd.desiredThrustsN[3] = mass * 9.81f / 4.f; // rear right
+    float c = collThrustCmd;
+    float p = momentCmd.x / L;
+    float q = momentCmd.y / L;
+    float r = momentCmd.z / kappa;
+  cmd.desiredThrustsN[0] = (c + p + q - r) / 4.f; // front left
+  cmd.desiredThrustsN[1] = (c - p + q + r) / 4.f; // front right
+  cmd.desiredThrustsN[2] = (c + p - q + r) / 4.f; // rear left
+  cmd.desiredThrustsN[3] = (c - p - q - r) / 4.f; // rear right
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -94,14 +105,24 @@ V3F QuadControl::BodyRateControl(V3F pqrCmd, V3F pqr)
   //  - you'll need parameters for moments of inertia Ixx, Iyy, Izz
   //  - you'll also need the gain parameter kpPQR (it's a V3F)
 
-  V3F momentCmd;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
-  
 
-  /////////////////////////////// END STUDENT CODE ////////////////////////////
-
+    V3F rateError = pqrCmd - pqr;
+    V3F moi = V3F(Ixx, Iyy,Izz);
+    V3F momentCmd = moi * (kpPQR * rateError);
+    float maxTorque = maxMotorThrust * kappa;
+    /*if (momentCmd.mag() > maxTorque){
+        printf("\ngot to max torque%f %f", momentCmd.mag(), maxTorque);
+        momentCmd = momentCmd * maxTorque/ momentCmd.mag();
+    }*/
+    /////////////////////////////// END STUDENT CODE ////////////////////////////
+    //printf("\nrateError");
+    //prv(pqrCmd);
+    //prv(pqr);
+    //prv(rateError);
+    //prv(momentCmd);
   return momentCmd;
 }
 
@@ -129,7 +150,26 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+    float cd = collThrustCmd / mass;
+    if (collThrustCmd > 0){
+        float target_R13 = -accelCmd.x / cd;
+        if (target_R13 < -maxTiltAngle) target_R13 = -maxTiltAngle;
+        if (target_R13 > maxTiltAngle) target_R13 = maxTiltAngle;
 
+
+        float target_R23 = -accelCmd.y / cd;
+        if (target_R23 < -maxTiltAngle) target_R23 = -maxTiltAngle;
+        if (target_R23 > maxTiltAngle) target_R23 = maxTiltAngle;
+
+        float pCmd = (1/R(2, 2)) * (-R(1, 0) * kpBank * (R(0, 2)-target_R13) + R(0, 0) * kpBank * (R(1, 2)-target_R23));
+        float qCmd = (1/R(2, 2)) * (-R(1, 1) * kpBank * (R(0, 2)-target_R13) + R(0, 1) * kpBank * (R(1, 2)-target_R23));
+        pqrCmd =  V3F(pCmd, qCmd, 0);
+    } else {
+        printf("Negative thrust command");
+        pqrCmd =  V3F(0,0,0);
+    }
+    //printf("\nROll pitch %f %f", collThrustCmd, accelCmd);
+    //prv(pqrCmd);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
