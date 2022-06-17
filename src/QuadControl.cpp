@@ -81,12 +81,11 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
     float p = momentCmd.x / L;
     float q = momentCmd.y / L;
     float r = momentCmd.z / kappa;
-  cmd.desiredThrustsN[0] = (c + p + q - r) / 4.f; // front left
-  cmd.desiredThrustsN[1] = (c - p + q + r) / 4.f; // front right
-  cmd.desiredThrustsN[2] = (c + p - q + r) / 4.f; // rear left
-  cmd.desiredThrustsN[3] = (c - p - q - r) / 4.f; // rear right
-
-  /////////////////////////////// END STUDENT CODE ////////////////////////////
+    cmd.desiredThrustsN[0] = (c + p + q - r) / 4.f; // front left
+    cmd.desiredThrustsN[1] = (c - p + q + r) / 4.f; // front right
+    cmd.desiredThrustsN[2] = (c + p - q + r) / 4.f; // rear left
+    cmd.desiredThrustsN[3] = (c - p - q - r) / 4.f; // rear right
+    /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return cmd;
 }
@@ -245,13 +244,10 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   V3F accelCmd = accelCmdFF;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-  V3F posCtrl = kpPosXY * (posCmd - pos);
-  V3F velCtrl = kpVelXY * (velCmd - vel);
-  float velocityNorm = sqrt(posCtrl.x * posCtrl.x + posCtrl.y * posCtrl.y);
-  if (velocityNorm > maxSpeedXY){
-      posCtrl = posCtrl * maxSpeedXY / velocityNorm;
-  }
-  accelCmd = accelCmd + posCtrl + velCtrl;
+  velCmd.constrain(-maxSpeedXY, maxSpeedXY);
+  accelCmd = accelCmd + kpPosXY * (posCmd - pos) + kpVelXY * (velCmd - vel);
+  accelCmd.constrain (-maxAccelXY, maxAccelXY);
+  accelCmd.z = 0;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return accelCmd;
