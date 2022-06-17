@@ -199,16 +199,18 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
   float thrust = 0;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-  float hdotCmd = kpPosZ * (posZCmd - posZ) + velZCmd;
-  if (hdotCmd < -maxDescentRate) hdotCmd = -maxDescentRate;
-  if (hdotCmd > maxAscentRate) hdotCmd = maxAscentRate;
-  float accelerationCmd = accelZCmd + kpVelZ * (hdotCmd - velZ);
-  thrust = -mass * accelerationCmd / R(2,2);
 
-  if (thrust > maxMotorThrust) thrust = maxMotorThrust;
-  else if (thrust < 0){
-      thrust = 0;
-  }
+  float error_pos = posZCmd - posZ;
+  float error_vel = velZCmd - velZ;
+
+  integratedAltitudeError += error_pos * dt;
+
+  float p = kpPosZ * error_pos;
+  float i = integratedAltitudeError * KiPosZ;
+  float d = kpVelZ * error_vel;
+
+  float u_bar = p + i + d + accelZCmd;
+  thrust = mass * (CONST_GRAVITY - u_bar);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
   
   return thrust;
